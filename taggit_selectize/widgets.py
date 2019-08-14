@@ -20,15 +20,23 @@ def bool_or_str(val):
    return val
 
 class TagSelectize(forms.TextInput):
-    def __init__(self, attrs={}, *args, **kwargs):
-        self.through = attrs.pop('through')
-        tag_model = self.through.tag.field.related_model
-        self.tag_content_type = ContentType.objects.get_for_model(tag_model)
+    def __init__(self, *args, **kwargs):
+        through = kwargs.pop('through')
+        self.tag_content_type_id = None
+        if through:
+            tag_model = through.tag.field.related_model
+            tag_content_type = ContentType.objects.get_for_model(tag_model)
+            self.tag_content_type_id = tag_content_type.id
         super(TagSelectize, self).__init__(*args, **kwargs)
 
     def render(self, name, value, attrs=None, renderer=None):
         if value is not None and not isinstance(value, six.string_types):
             value = edit_string_for_tags(value)
+
+        if hasattr(self, 'allow_create'):
+            allow_create = self.allow_create
+        else: 
+            allow_create = settings.TAGGIT_SELECTIZE['CREATE']
 
         html = super(TagSelectize, self).render(name, value, attrs)
 
@@ -76,7 +84,7 @@ class TagSelectize(forms.TextInput):
                             load: function(query, callback) {
                                 if (query.length < %(minimum_query_length)d) return callback();
                                 $.ajax({
-                                    url: '%(remote_url)s?query=' + encodeURIComponent(query) + '&tag_content_type_id=%(tag_content_type)s',
+                                    url: '%(remote_url)s?query=' + encodeURIComponent(query) + '%(tag_content_type)s',
                                     type: 'GET',
                                     error: function() {
                                         callback();
@@ -95,7 +103,7 @@ class TagSelectize(forms.TextInput):
             'minimum_query_length': settings.TAGGIT_SELECTIZE['MINIMUM_QUERY_LENGTH'],
             'recommendation_limit': settings.TAGGIT_SELECTIZE['RECOMMENDATION_LIMIT'],
             'diacritics': "true" if settings.TAGGIT_SELECTIZE['DIACRITICS'] else "false",
-            'create': bool_or_str(settings.TAGGIT_SELECTIZE['CREATE']),
+            'create': bool_or_str(allow_create),
             'persist': "true" if settings.TAGGIT_SELECTIZE['PERSIST'] else "false",
             'open_on_focus': "true" if settings.TAGGIT_SELECTIZE['OPEN_ON_FOCUS'] else "false",
             'hide_selected': "true" if settings.TAGGIT_SELECTIZE['HIDE_SELECTED'] else "false",
@@ -107,7 +115,7 @@ class TagSelectize(forms.TextInput):
             'delimiter': settings.TAGGIT_SELECTIZE['DELIMITER'],
             'plugins': ",".join(["\"{}\"".format(plugin) for plugin in js_plugins]),
             'remote_url': reverse('tags_recommendation'),
-            'tag_content_type': self.tag_content_type.id
+            'tag_content_type': '&tag_content_type_id=%s' % self.tag_content_type_id if self.tag_content_type_id else ''
         }
         return mark_safe("\n".join([html, js]))
 
