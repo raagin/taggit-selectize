@@ -10,7 +10,9 @@ class TaggableManager(BaseTaggableManager):
             "label": capfirst(self.verbose_name),
             "help_text": None,
             "required": not self.blank,
-            "widget": TagSelectize,
+            "widget": TagSelectize(attrs={
+                "through":  self.through
+                })
         }
         defaults.update(kwargs)
         return form_class(**defaults)

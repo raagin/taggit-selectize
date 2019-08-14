@@ -1,6 +1,8 @@
 from django import forms
 from django.utils import six
 from django.utils.safestring import mark_safe
+from django.contrib.contenttypes.models import ContentType
+
 from taggit.utils import edit_string_for_tags
 
 from .conf import settings
@@ -18,14 +20,15 @@ def bool_or_str(val):
    return val
 
 class TagSelectize(forms.TextInput):
+    def __init__(self, attrs={}, *args, **kwargs):
+        self.through = attrs.pop('through')
+        tag_model = self.through.tag.field.related_model
+        self.tag_content_type = ContentType.objects.get_for_model(tag_model)
+        super(TagSelectize, self).__init__(*args, **kwargs)
+
     def render(self, name, value, attrs=None, renderer=None):
         if value is not None and not isinstance(value, six.string_types):
-            if isinstance(value, list):
-                # django-taggit 1.0 and up
-                value = edit_string_for_tags(value)
-            else:
-                # django-taggit 0.24.0 and below
-                value = edit_string_for_tags([o.tag for o in value.select_related("tag")])
+            value = edit_string_for_tags(value)
 
         html = super(TagSelectize, self).render(name, value, attrs)
 
@@ -73,7 +76,7 @@ class TagSelectize(forms.TextInput):
                             load: function(query, callback) {
                                 if (query.length < %(minimum_query_length)d) return callback();
                                 $.ajax({
-                                    url: '%(remote_url)s?query=' + encodeURIComponent(query),
+                                    url: '%(remote_url)s?query=' + encodeURIComponent(query) + '&tag_content_type_id=%(tag_content_type)s',
                                     type: 'GET',
                                     error: function() {
                                         callback();
@@ -103,7 +106,8 @@ class TagSelectize(forms.TextInput):
             'select_on_tab': "true" if settings.TAGGIT_SELECTIZE['SELECT_ON_TAB'] else "false",
             'delimiter': settings.TAGGIT_SELECTIZE['DELIMITER'],
             'plugins': ",".join(["\"{}\"".format(plugin) for plugin in js_plugins]),
-            'remote_url': reverse('tags_recommendation')
+            'remote_url': reverse('tags_recommendation'),
+            'tag_content_type': self.tag_content_type.id
         }
         return mark_safe("\n".join([html, js]))
 
