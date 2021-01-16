@@ -1,5 +1,5 @@
 from django import forms
-from django.utils import six
+import six
 from django.utils.safestring import mark_safe
 from django.contrib.contenttypes.models import ContentType
 
@@ -38,7 +38,7 @@ class TagSelectize(forms.TextInput):
         else: 
             allow_create = settings.TAGGIT_SELECTIZE['CREATE']
 
-        html = super(TagSelectize, self).render(name, value, attrs)
+        html = super(TagSelectize, self).render(name, value, attrs, renderer)
 
         js_plugins = []
         if settings.TAGGIT_SELECTIZE['REMOVE_BUTTON']:
