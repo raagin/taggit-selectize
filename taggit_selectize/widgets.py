@@ -96,7 +96,7 @@ class TagSelectize(forms.TextInput):
                             }
                         }).parents('.form-row').css('overflow', 'visible');
                     });
-                })(jQuery || django.jQuery);
+                })(%(jquery)s || jQuery || django.jQuery);
             </script>
         """ % {
             'id': attrs['id'],
@@ -115,7 +115,8 @@ class TagSelectize(forms.TextInput):
             'delimiter': settings.TAGGIT_SELECTIZE['DELIMITER'],
             'plugins': ",".join(["\"{}\"".format(plugin) for plugin in js_plugins]),
             'remote_url': reverse('tags_recommendation'),
-            'tag_content_type': '&tag_content_type_id=%s' % self.tag_content_type_id if self.tag_content_type_id else ''
+            'tag_content_type': '&tag_content_type_id=%s' % self.tag_content_type_id if self.tag_content_type_id else '',
+            'jquery': settings.TAGGIT_SELECTIZE_JQUERY if hasattr(settings, 'TAGGIT_SELECTIZE_JQUERY') else 'false'
         }
         return mark_safe("\n".join([html, js]))
 
